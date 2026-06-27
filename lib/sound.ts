@@ -15,9 +15,40 @@ import type { AmountTier } from "./utils";
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null; // volume / mute; everything connects here
+let limiter: DynamicsCompressorNode | null = null; // final stage (samples bypass the lowpass)
 let muted = false;
 
 const BASE_VOLUME = 0.85;
+
+// Optional real crowd-cheer sample for the biggest moments. Drop a file at
+// public/sounds/crowd-cheer.mp3 and it'll be used automatically; otherwise a
+// synthesized crowd roar is the fallback.
+let cheerBuffer: AudioBuffer | null = null;
+let cheerTried = false;
+const CHEER_CANDIDATES = [
+  "/sounds/crowd-cheer.mp3",
+  "/sounds/crowd-cheer.ogg",
+  "/sounds/crowd-cheer.wav",
+  "/sounds/cheer.mp3",
+];
+
+async function loadCheer(): Promise<void> {
+  if (cheerTried) return;
+  cheerTried = true;
+  const c = ensure();
+  if (!c) return;
+  for (const url of CHEER_CANDIDATES) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const arr = await res.arrayBuffer();
+      cheerBuffer = await c.decodeAudioData(arr);
+      return;
+    } catch {
+      /* try next / fall back to synth */
+    }
+  }
+}
 
 function makeReverbIR(seconds: number, decay: number): AudioBuffer {
   const c = ctx!;
@@ -53,6 +84,7 @@ function ensure(): AudioContext | null {
   const comp = ctx.createDynamicsCompressor();
   comp.threshold.value = -18;
   comp.ratio.value = 4;
+  limiter = comp;
 
   // Dry path.
   master.connect(lowpass);
@@ -81,6 +113,8 @@ export async function unlockAudio(): Promise<void> {
       /* ignore */
     }
   }
+  // Best-effort preload of the crowd-cheer sample (no-op if no file present).
+  void loadCheer();
 }
 
 export function isReady(): boolean {
@@ -260,6 +294,52 @@ function firework(start: number): void {
   }
 }
 
+/** Play a decoded audio sample (e.g. the crowd cheer) loud, bypassing the
+ *  master low-pass for fidelity but still going through the limiter. */
+function playSample(buffer: AudioBuffer, start: number, gainValue = 1.6): void {
+  const c = ensure()!;
+  const src = c.createBufferSource();
+  src.buffer = buffer;
+  const g = c.createGain();
+  g.gain.value = gainValue;
+  src.connect(g);
+  g.connect(limiter ?? master!);
+  src.start(start);
+}
+
+/** Synthesized "crowd roar" wash — the fallback cheer when no audio file is present. */
+function crowdRoar(start: number, duration = 2.8, peak = 0.5): void {
+  const c = ensure()!;
+  const src = c.createBufferSource();
+  src.buffer = noiseBuffer(duration + 0.1);
+  const bp = c.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = 700;
+  bp.Q.value = 0.35;
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, start);
+  g.gain.exponentialRampToValueAtTime(peak, start + 0.4); // swell up
+  g.gain.setValueAtTime(peak, start + duration * 0.6);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + duration); // fade out
+  src.connect(bp);
+  bp.connect(g);
+  g.connect(master!);
+  src.start(start);
+  src.stop(start + duration + 0.1);
+}
+
+/** A big crowd cheer for the top moments: the real sample if available, else a
+ *  synthesized roar — both layered with applause. */
+function bigCheer(start: number): void {
+  if (cheerBuffer) {
+    playSample(cheerBuffer, start, 1.8); // real crowd, loud
+    applause(start + 0.1, 2.4, 45, 0.26); // subtle extra clap layer
+  } else {
+    crowdRoar(start, 2.9, 0.55);
+    applause(start, 3.6, 95, 0.46);
+  }
+}
+
 // ── Public API (applause-forward) ────────────────────────────────────
 
 export function playForTier(tier: AmountTier): void {
@@ -281,8 +361,9 @@ export function playForTier(tier: AmountTier): void {
       applause(t + 0.25, 2.6, 40, 0.38);
       break;
     case "royal":
-      // Standing ovation: huge warm crowd + a soft fanfare accent + a few coins.
-      applause(t, 3.6, 90, 0.46);
+      // The biggest tier: a roaring crowd cheer (real sample if present) + a
+      // soft fanfare accent + a few coins.
+      bigCheer(t);
       fanfareAccent(t + 0.15, 0.2);
       coins(t + 0.4, 5, 0.13);
       break;
@@ -297,7 +378,7 @@ export function playForTier(tier: AmountTier): void {
 export function playFinale(): void {
   if (!isReady()) return;
   const t = nowT() + 0.02;
-  applause(t, 4.5, 80, 0.46);
+  bigCheer(t);
   fanfareAccent(t + 0.15, 0.2);
   coins(t + 0.5, 12, 0.14);
 }
