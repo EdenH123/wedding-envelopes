@@ -3,19 +3,34 @@
 import type { AmountTier } from "./utils";
 
 /**
- * All sound effects are synthesized with the Web Audio API — no audio files to
- * host or license. Each amount tier gets a fitting sound; the biggest tiers get
- * loud applause + a trumpet fanfare, and the casino "Lucky 17" gets coins.
+ * Web Audio sound effects — no files. Celebrations are built on realistic
+ * APPLAUSE: each clap is a transient "snap" + a warm body, panned across the
+ * stereo field, fed through a convolution reverb so a burst of them sounds like
+ * a real crowd in a hall (not thin clicks). A master low-pass keeps everything
+ * easy on the ears.
  *
  * Browsers block audio until a user gesture, so call `unlockAudio()` from a
  * click handler once (the display's sound toggle does this).
  */
 
 let ctx: AudioContext | null = null;
-let master: GainNode | null = null;
+let master: GainNode | null = null; // volume / mute; everything connects here
 let muted = false;
 
-const BASE_VOLUME = 0.9;
+const BASE_VOLUME = 0.85;
+
+function makeReverbIR(seconds: number, decay: number): AudioBuffer {
+  const c = ctx!;
+  const len = Math.floor(c.sampleRate * seconds);
+  const buf = c.createBuffer(2, len, c.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+    }
+  }
+  return buf;
+}
 
 function ensure(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -24,12 +39,35 @@ function ensure(): AudioContext | null {
     window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AC) return null;
   ctx = new AC();
+
   master = ctx.createGain();
   master.gain.value = muted ? 0 : BASE_VOLUME;
-  // A gentle limiter keeps dense applause from clipping harshly.
+
+  // Tame piercing highs so nothing hurts the ears.
+  const lowpass = ctx.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = 5000;
+  lowpass.Q.value = 0.6;
+
+  // Gentle limiter so dense applause never clips harshly.
   const comp = ctx.createDynamicsCompressor();
-  master.connect(comp);
+  comp.threshold.value = -18;
+  comp.ratio.value = 4;
+
+  // Dry path.
+  master.connect(lowpass);
+  lowpass.connect(comp);
   comp.connect(ctx.destination);
+
+  // Wet (reverb) path — gives applause a natural room/hall ambience.
+  const reverb = ctx.createConvolver();
+  reverb.buffer = makeReverbIR(1.8, 2.6);
+  const wet = ctx.createGain();
+  wet.gain.value = 0.3;
+  master.connect(reverb);
+  reverb.connect(wet);
+  wet.connect(comp);
+
   return ctx;
 }
 
@@ -90,7 +128,7 @@ function tone(
   opts: { type?: OscillatorType; peak?: number; attack?: number; detune?: number } = {}
 ): void {
   const c = ensure()!;
-  const { type = "sine", peak = 0.3, attack = 0.005, detune = 0 } = opts;
+  const { type = "triangle", peak = 0.25, attack = 0.012, detune = 0 } = opts;
   const o = c.createOscillator();
   o.type = type;
   o.frequency.value = freq;
@@ -112,46 +150,71 @@ function noiseBuffer(dur: number): AudioBuffer {
 function noise(
   start: number,
   dur: number,
-  opts: { peak?: number; type?: BiquadFilterType; freq?: number; q?: number; attack?: number } = {}
+  opts: {
+    peak?: number;
+    type?: BiquadFilterType;
+    freq?: number;
+    q?: number;
+    attack?: number;
+    pan?: number;
+  } = {}
 ): void {
   const c = ensure()!;
-  const { peak = 0.3, type = "bandpass", freq = 1500, q = 1, attack = 0.001 } = opts;
+  const { peak = 0.3, type = "bandpass", freq = 1200, q = 1, attack = 0.001, pan = 0 } = opts;
   const src = c.createBufferSource();
   src.buffer = noiseBuffer(dur + 0.05);
   const filter = c.createBiquadFilter();
   filter.type = type;
   filter.frequency.value = freq;
   filter.Q.value = q;
+  const g = envGain(start, attack, dur, peak);
   src.connect(filter);
-  filter.connect(envGain(start, attack, dur, peak));
+  if (pan !== 0 && c.createStereoPanner) {
+    const panner = c.createStereoPanner();
+    panner.pan.value = Math.max(-1, Math.min(1, pan));
+    filter.connect(panner);
+    panner.connect(g);
+  } else {
+    filter.connect(g);
+  }
   src.start(start);
   src.stop(start + dur + 0.05);
 }
 
-// ── Instruments ──────────────────────────────────────────────────────
+// ── Applause ─────────────────────────────────────────────────────────
 
+/** A single realistic hand-clap: a quick transient snap + a warm body. */
 function clap(start: number, peak = 0.5): void {
-  noise(start, 0.05, { peak, type: "bandpass", freq: 1100 + Math.random() * 900, q: 0.7, attack: 0.001 });
+  const pan = Math.random() * 1.3 - 0.65;
+  // warm body
+  noise(start, 0.055, { peak: peak * 0.9, type: "bandpass", freq: 750 + Math.random() * 450, q: 0.55, attack: 0.0008, pan });
+  // transient snap (kept subtle; master low-pass tames it)
+  noise(start + 0.001, 0.02, { peak: peak * 0.5, type: "bandpass", freq: 2400, q: 0.6, attack: 0.0004, pan });
 }
 
-/** A burst of randomized claps = applause. Higher density/peak = louder crowd. */
+/**
+ * A burst of randomized, panned claps = applause. With the reverb tail this
+ * reads as a real crowd. Higher density/peak = bigger ovation.
+ */
 function applause(start: number, duration = 2.2, density = 30, peak = 0.32): void {
   const total = Math.floor(duration * density);
   for (let i = 0; i < total; i++) {
+    // ease the crowd in slightly at the start
     const t = start + Math.random() * duration;
     clap(t, peak * (0.45 + Math.random() * 0.7));
   }
 }
 
-/** A brassy note (layered detuned saws through a lowpass). */
-function brass(freq: number, start: number, dur: number, peak = 0.26): void {
+// ── Other (warm, mid-range) instruments ──────────────────────────────
+
+function brass(freq: number, start: number, dur: number, peak = 0.22): void {
   const c = ensure()!;
   const filter = c.createBiquadFilter();
   filter.type = "lowpass";
-  filter.frequency.value = Math.max(1400, freq * 4);
-  filter.Q.value = 1;
-  filter.connect(envGain(start, 0.03, dur, peak));
-  for (const detune of [-7, 7]) {
+  filter.frequency.value = Math.max(900, freq * 3);
+  filter.Q.value = 0.8;
+  filter.connect(envGain(start, 0.04, dur, peak));
+  for (const detune of [-6, 6]) {
     const o = c.createOscillator();
     o.type = "sawtooth";
     o.frequency.value = freq;
@@ -162,111 +225,84 @@ function brass(freq: number, start: number, dur: number, peak = 0.26): void {
   }
 }
 
-/** A triumphant trumpet fanfare ending on a held major chord. */
-function trumpetFanfare(start: number, peak = 0.3): void {
-  const G4 = 392, C5 = 523.25, E5 = 659.25, G5 = 783.99;
+/** A soft, warm fanfare accent (gentle — not the star of the show). */
+function fanfareAccent(start: number, peak = 0.2): void {
+  const C5 = 523.25, E5 = 659.25, G5 = 783.99;
   const q = 0.16;
-  brass(G4, start, q * 0.9, peak);
-  brass(C5, start + q, q * 0.9, peak);
-  brass(E5, start + 2 * q, q * 0.9, peak);
-  // held triumphant chord
-  brass(G5, start + 3 * q, q * 2.4, peak * 1.1);
-  brass(E5, start + 3 * q, q * 2.4, peak * 0.6);
-  brass(C5, start + 3 * q, q * 2.4, peak * 0.6);
+  brass(C5, start, q * 0.9, peak);
+  brass(E5, start + q, q * 0.9, peak);
+  brass(G5, start + 2 * q, q * 2.2, peak);
+  brass(E5, start + 2 * q, q * 2.2, peak * 0.5);
 }
 
-/** A satisfying two-note coin "cling" (à la classic arcade). */
-function coin(start: number, peak = 0.3): void {
-  tone(988, start, 0.07, { type: "square", peak });
-  tone(1319, start + 0.06, 0.22, { type: "square", peak });
-}
-
-/** A cascade of coins dropping. */
-function coins(start: number, count = 12, peak = 0.24): void {
+/** Soft, warm coin clinks (triangle, mid pitch). */
+function coins(start: number, count = 8, peak = 0.16): void {
   for (let i = 0; i < count; i++) {
-    const t = start + i * 0.075 + Math.random() * 0.04;
-    coin(t, peak * (0.7 + Math.random() * 0.5));
+    const t = start + i * 0.085 + Math.random() * 0.04;
+    tone(659.25, t, 0.09, { type: "triangle", peak: peak * (0.7 + Math.random() * 0.4) });
+    tone(880, t + 0.05, 0.15, { type: "triangle", peak: peak * 0.8 });
   }
 }
 
-/** Gentle ascending wind-chime sparkle. */
-function sparkle(start: number, peak = 0.24): void {
-  [1318.5, 1568, 2093, 2637].forEach((f, i) =>
-    tone(f, start + i * 0.07, 0.45, { type: "sine", peak: peak * (1 - i * 0.12) })
-  );
-}
-
-/** A bright casino win arpeggio. */
-function winJingle(start: number, peak = 0.26): void {
-  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) =>
-    tone(f, start + i * 0.1, 0.32, { type: "square", peak })
-  );
-}
-
-/** A single firework: rising whistle → boom → crackle. */
+/** A single firework: soft whoosh → low boom → muted crackle. */
 function firework(start: number): void {
   const c = ensure()!;
   const o = c.createOscillator();
   o.type = "sine";
-  o.frequency.setValueAtTime(700, start);
-  o.frequency.exponentialRampToValueAtTime(1900, start + 0.4);
-  o.connect(envGain(start, 0.01, 0.4, 0.16));
+  o.frequency.setValueAtTime(500, start);
+  o.frequency.exponentialRampToValueAtTime(1100, start + 0.4);
+  o.connect(envGain(start, 0.02, 0.4, 0.1));
   o.start(start);
   o.stop(start + 0.44);
-  noise(start + 0.42, 0.4, { peak: 0.5, type: "lowpass", freq: 220, q: 0.7, attack: 0.002 });
-  for (let i = 0; i < 12; i++) {
-    noise(start + 0.45 + Math.random() * 0.6, 0.04, { peak: 0.18, type: "highpass", freq: 4500, q: 0.5 });
+  noise(start + 0.42, 0.45, { peak: 0.42, type: "lowpass", freq: 190, q: 0.7, attack: 0.002 }); // boom
+  for (let i = 0; i < 6; i++) {
+    noise(start + 0.45 + Math.random() * 0.6, 0.05, { peak: 0.08, type: "bandpass", freq: 1800, q: 0.6 });
   }
 }
 
-// ── Public API ───────────────────────────────────────────────────────
+// ── Public API (applause-forward) ────────────────────────────────────
 
-/** Play the sound that matches a reveal's amount tier. */
 export function playForTier(tier: AmountTier): void {
   if (!isReady()) return;
   const t = nowT() + 0.02;
   switch (tier) {
     case "sparkle":
-      sparkle(t, 0.22);
+      applause(t, 1.2, 20, 0.3);
       break;
     case "confetti-small":
-      sparkle(t, 0.15);
-      applause(t, 1.3, 18, 0.3);
+      applause(t, 1.7, 28, 0.34);
       break;
     case "confetti-big":
-      applause(t, 2, 32, 0.34);
-      sparkle(t + 0.1, 0.16);
+      applause(t, 2.3, 42, 0.4);
       break;
     case "fireworks":
       firework(t);
       firework(t + 0.6);
-      firework(t + 1.2);
-      applause(t + 0.3, 2, 26, 0.3);
+      applause(t + 0.25, 2.6, 40, 0.38);
       break;
     case "royal":
-      // The most valuable tier: loud trumpets + a roaring crowd + coins.
-      trumpetFanfare(t, 0.34);
-      applause(t + 0.1, 3.2, 70, 0.42);
-      coins(t + 0.25, 8, 0.18);
+      // Standing ovation: huge warm crowd + a soft fanfare accent + a few coins.
+      applause(t, 3.6, 90, 0.46);
+      fanfareAccent(t + 0.15, 0.2);
+      coins(t + 0.4, 5, 0.13);
       break;
     case "lucky17":
-      // Casino: a shower of coins + a win jingle.
-      coins(t, 16, 0.28);
-      winJingle(t + 0.05, 0.26);
+      // Casino: applause + soft coins.
+      applause(t, 2.2, 38, 0.38);
+      coins(t, 10, 0.18);
       break;
   }
 }
 
-/** Big celebratory sound for the summary finale screen. */
 export function playFinale(): void {
   if (!isReady()) return;
   const t = nowT() + 0.02;
-  trumpetFanfare(t, 0.34);
-  applause(t + 0.2, 4, 60, 0.42);
-  coins(t + 0.5, 22, 0.2);
+  applause(t, 4.5, 80, 0.46);
+  fanfareAccent(t + 0.15, 0.2);
+  coins(t + 0.5, 12, 0.14);
 }
 
-/** An accelerating snare drumroll for the "Ready?" tension build, ending on a hit. */
+/** An accelerating, soft drumroll for the "Ready?" tension build. */
 export function playDrumroll(durationMs = 1500): void {
   if (!isReady()) return;
   const start = nowT() + 0.02;
@@ -274,15 +310,15 @@ export function playDrumroll(durationMs = 1500): void {
   let t = start;
   let gap = 0.09;
   while (t < end) {
-    noise(t, 0.04, { peak: 0.2, type: "bandpass", freq: 2200, q: 0.8, attack: 0.001 });
-    gap = Math.max(0.028, gap * 0.93); // speed up
+    noise(t, 0.045, { peak: 0.15, type: "bandpass", freq: 1300, q: 0.7, attack: 0.001 });
+    gap = Math.max(0.028, gap * 0.93);
     t += gap;
   }
-  noise(end, 0.14, { peak: 0.42, type: "bandpass", freq: 1700, q: 0.6 }); // final accent
+  noise(end, 0.16, { peak: 0.32, type: "bandpass", freq: 1100, q: 0.6 });
 }
 
-/** A short confirmation sound when the operator enables audio. */
+/** A short applause preview when the operator enables audio. */
 export function playTestChime(): void {
   if (!isReady()) return;
-  sparkle(nowT() + 0.02, 0.22);
+  applause(nowT() + 0.02, 0.8, 30, 0.34);
 }
