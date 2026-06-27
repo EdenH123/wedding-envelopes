@@ -86,6 +86,16 @@ const config: Config = {
           "0%": { transform: "scale(1.4)", filter: "brightness(2)" },
           "100%": { transform: "scale(1)", filter: "brightness(1)" },
         },
+        "roulette-spin": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(1440deg)" },
+        },
+        "neon-flicker": {
+          "0%, 100%": { opacity: "1" },
+          "45%": { opacity: "1" },
+          "50%": { opacity: "0.55" },
+          "55%": { opacity: "1" },
+        },
       },
       animation: {
         "gradient-pan": "gradient-pan 18s ease infinite",
@@ -100,6 +110,8 @@ const config: Config = {
         twinkle: "twinkle 1.8s ease-in-out infinite",
         wiggle: "wiggle 0.4s ease-in-out infinite",
         "count-flash": "count-flash 0.5s ease-out",
+        "roulette-spin": "roulette-spin 4.5s cubic-bezier(0.16, 0.84, 0.2, 1) forwards",
+        "neon-flicker": "neon-flicker 2.2s ease-in-out infinite",
       },
     },
   },

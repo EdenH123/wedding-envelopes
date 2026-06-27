@@ -71,7 +71,7 @@ export function getAmountTier(amount: number | null | undefined): AmountTier {
 export function tierLabel(tier: AmountTier): string {
   switch (tier) {
     case "lucky17":
-      return "🍀 מזל 17! 🍀";
+      return "🎰 מזל 17! 🎰";
     case "royal":
       return "👑 נדיבות מלכותית 👑";
     case "fireworks":

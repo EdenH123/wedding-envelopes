@@ -3,7 +3,8 @@ import type { AmountTier } from "./utils";
 
 const GOLD = ["#d4af37", "#f6e9c4", "#e7bd57", "#fff3c4", "#b8902b", "#ffe9a8"];
 const FESTIVE = ["#ff5d8f", "#ffd166", "#06d6a0", "#4cc9f0", "#f72585", "#ffd700", "#9b5de5"];
-const LUCKY = ["#1db954", "#a7f3d0", "#ffd700", "#fff3c4", "#34d399"];
+// Casino palette for the roulette "Lucky 17" reveal: red, gold, black, white.
+const LUCKY = ["#e11d48", "#facc15", "#dc2626", "#d4af37", "#ffffff", "#111111"];
 
 const noop = () => {};
 

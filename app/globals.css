@@ -144,7 +144,9 @@
   .animate-spin-slow,
   .animate-crown-bounce,
   .animate-shimmer,
-  .animate-twinkle {
+  .animate-twinkle,
+  .animate-roulette-spin,
+  .animate-neon-flicker {
     animation: none !important;
   }
 }
