@@ -14,9 +14,9 @@ export function SlotNumber({ value, className }: { value: number; className?: st
 
   useEffect(() => {
     setSpinning(true);
-    const safe = Math.max(1, Math.round(value));
-    const digits = Math.max(2, String(safe).length);
-    const max = Math.pow(10, digits) - 1;
+    // Never spin past the real value, so it never shows more digits (or a bigger
+    // number) than the final amount.
+    const ceil = Math.max(1, Math.round(value));
     const duration = 1300;
     let startTs = 0;
 
@@ -24,8 +24,8 @@ export function SlotNumber({ value, className }: { value: number; className?: st
       if (!startTs) startTs = now;
       const t = Math.min(1, (now - startTs) / duration);
       if (t < 0.5) {
-        // fast random spin
-        setDisplay(Math.floor(Math.random() * max));
+        // fast random spin, bounded by the real value
+        setDisplay(Math.floor(Math.random() * (ceil + 1)));
         rafRef.current = requestAnimationFrame(tick);
       } else if (t < 1) {
         // roll into the final value
