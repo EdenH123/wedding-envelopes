@@ -11,10 +11,12 @@ export function GuestSearch({
   guests,
   selectedId,
   onSelect,
+  onDelete,
 }: {
   guests: Guest[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const [query, setQuery] = useState("");
 
@@ -65,7 +67,13 @@ export function GuestSearch({
           </div>
         ) : (
           visible.map((g) => (
-            <GuestCard key={g.id} guest={g} selected={g.id === selectedId} onSelect={onSelect} />
+            <GuestCard
+              key={g.id}
+              guest={g}
+              selected={g.id === selectedId}
+              onSelect={onSelect}
+              onDelete={onDelete}
+            />
           ))
         )}
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useEventShow } from "@/lib/useEventShow";
 import { exportGuestsToExcel } from "@/lib/excel";
@@ -9,9 +10,11 @@ import { QuickAdd } from "@/components/admin/QuickAdd";
 import { GuestSearch } from "@/components/admin/GuestSearch";
 import { SelectedPanel } from "@/components/admin/SelectedPanel";
 import { StatsStrip } from "@/components/admin/StatsStrip";
+import { SummaryModal } from "@/components/admin/SummaryModal";
 
 export default function AdminPage() {
   const show = useEventShow();
+  const [summaryOpen, setSummaryOpen] = useState(false);
 
   if (!show.configured) return <SetupNotice />;
 
@@ -66,11 +69,21 @@ export default function AdminPage() {
               guests={show.guests}
               selectedId={show.eventState?.selected_guest_id ?? null}
               onSelect={show.selectGuest}
+              onDelete={show.deleteGuest}
             />
 
             <QuickAdd onAddAndReveal={show.addAndReveal} />
 
             <ExcelUpload onImport={show.importGuests} />
+
+            {/* End-of-event summary */}
+            <button
+              type="button"
+              onClick={() => setSummaryOpen(true)}
+              className="btn-gold w-full py-4 text-lg"
+            >
+              📊 סיכום האירוע
+            </button>
           </div>
         )}
 
@@ -78,6 +91,14 @@ export default function AdminPage() {
           💌 מופע המעטפות · לכבוד חתונת המשפחה
         </footer>
       </div>
+
+      <SummaryModal
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        guests={show.guests}
+        stats={show.stats}
+        onExport={() => exportGuestsToExcel(show.guests)}
+      />
     </main>
   );
 }

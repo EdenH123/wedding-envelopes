@@ -104,6 +104,52 @@ export function computeStats(guests: Guest[]): EventStats {
   };
 }
 
+export interface MethodTotal {
+  sum: number;
+  count: number;
+}
+
+export interface PaymentBreakdown {
+  bit: MethodTotal;
+  cash: MethodTotal;
+  check: MethodTotal;
+  /** Opened envelopes that have no payment method recorded (legacy data). */
+  unspecified: MethodTotal;
+}
+
+/** Sum + count of opened envelopes grouped by payment method. */
+export function computePaymentBreakdown(guests: Guest[]): PaymentBreakdown {
+  const empty = (): MethodTotal => ({ sum: 0, count: 0 });
+  const out: PaymentBreakdown = {
+    bit: empty(),
+    cash: empty(),
+    check: empty(),
+    unspecified: empty(),
+  };
+  for (const g of guests) {
+    if (!g.opened || typeof g.amount !== "number") continue;
+    const bucket =
+      g.payment_method === "bit"
+        ? out.bit
+        : g.payment_method === "cash"
+          ? out.cash
+          : g.payment_method === "check"
+            ? out.check
+            : out.unspecified;
+    bucket.sum += g.amount;
+    bucket.count += 1;
+  }
+  return out;
+}
+
+/** Opened envelopes sorted by amount (highest first), limited to `limit`. */
+export function topGivers(guests: Guest[], limit = 10): Guest[] {
+  return guests
+    .filter((g) => g.opened && typeof g.amount === "number")
+    .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0))
+    .slice(0, limit);
+}
+
 /** Normalize a name for duplicate detection (trim + collapse inner whitespace). */
 export function normalizeName(name: string): string {
   return name.trim().replace(/\s+/g, " ");
