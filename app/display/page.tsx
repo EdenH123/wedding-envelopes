@@ -4,12 +4,14 @@ import { useEffect, useRef } from "react";
 import { useEventShow } from "@/lib/useEventShow";
 import { getAmountTier } from "@/lib/utils";
 import { runCelebration, runFinale } from "@/lib/celebrate";
+import { playForTier, playFinale } from "@/lib/sound";
 import { SetupNotice } from "@/components/SetupNotice";
 import { StatsBar } from "@/components/display/StatsBar";
 import { IdleScreen } from "@/components/display/IdleScreen";
 import { SelectedScreen } from "@/components/display/SelectedScreen";
 import { RevealScreen } from "@/components/display/RevealScreen";
 import { SummaryScreen } from "@/components/display/SummaryScreen";
+import { SoundToggle } from "@/components/display/SoundToggle";
 
 export default function DisplayPage() {
   const { guests, eventState, selectedGuest, stats, loading, error, connected, configured } =
@@ -28,7 +30,9 @@ export default function DisplayPage() {
 
     lastFiredRef.current = stamp;
     cleanupRef.current(); // stop any previous loop
-    cleanupRef.current = runCelebration(getAmountTier(selectedGuest.amount));
+    const tier = getAmountTier(selectedGuest.amount);
+    cleanupRef.current = runCelebration(tier);
+    playForTier(tier);
   }, [eventState?.screen_status, eventState?.last_reveal_at, selectedGuest]);
 
   // Fire a confetti finale when the summary screen appears (once per entry).
@@ -43,6 +47,7 @@ export default function DisplayPage() {
     summaryFiredRef.current = true;
     cleanupRef.current();
     cleanupRef.current = runFinale();
+    playFinale();
   }, [status]);
 
   // Stop animations on unmount.
@@ -54,6 +59,9 @@ export default function DisplayPage() {
 
   return (
     <main className="bg-stage-animated vignette relative h-screen w-screen overflow-hidden">
+      {/* sound enable / mute (top corner) */}
+      <SoundToggle />
+
       {/* connection / loading indicator (tiny, top-corner) */}
       <div className="absolute end-4 top-4 z-30 flex items-center gap-2 text-xs text-white/40">
         <span
