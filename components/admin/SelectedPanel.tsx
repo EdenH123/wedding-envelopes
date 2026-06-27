@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Guest, ScreenStatus } from "@/lib/types";
+import type { Guest, PaymentMethod, ScreenStatus } from "@/lib/types";
 import type { ActionResult } from "@/lib/useEventShow";
-import { formatILS } from "@/lib/utils";
+import { formatILS, PAYMENT_METHODS, paymentMethodLabel } from "@/lib/utils";
 import { Name } from "@/components/Name";
 
 const QUICK_AMOUNTS = [200, 360, 500, 1000, 1500, 1717];
@@ -18,20 +18,22 @@ export function SelectedPanel({
 }: {
   guest: Guest | null;
   status: ScreenStatus;
-  onReveal: (id: string, amount: number) => Promise<ActionResult>;
+  onReveal: (id: string, amount: number, method: PaymentMethod) => Promise<ActionResult>;
   onReady: () => Promise<ActionResult>;
   onClear: () => Promise<ActionResult>;
   onUndo: () => Promise<ActionResult>;
 }) {
   const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState<PaymentMethod | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Sync the input when a different guest is selected (prefill if already opened).
+  // Sync the inputs when a different guest is selected (prefill if already opened).
   useEffect(() => {
     setError(null);
     setAmount(guest && typeof guest.amount === "number" ? String(guest.amount) : "");
-  }, [guest?.id, guest?.amount]);
+    setMethod(guest?.payment_method ?? null);
+  }, [guest?.id, guest?.amount, guest?.payment_method]);
 
   if (!guest) {
     return (
@@ -57,7 +59,11 @@ export function SelectedPanel({
       setError("הזינו סכום תקין.");
       return;
     }
-    await run("reveal", () => onReveal(guest!.id, value));
+    if (!method) {
+      setError("בחרו אמצעי תשלום.");
+      return;
+    }
+    await run("reveal", () => onReveal(guest!.id, value, method));
   }
 
   const revealed = status === "revealed" && guest.opened;
@@ -71,7 +77,12 @@ export function SelectedPanel({
           <div className="truncate text-2xl font-extrabold text-white">
             🎊 <Name>{guest.name}</Name>
           </div>
-          <StatusLine status={status} opened={guest.opened} amount={guest.amount} />
+          <StatusLine
+            status={status}
+            opened={guest.opened}
+            amount={guest.amount}
+            method={guest.payment_method}
+          />
         </div>
       </div>
 
@@ -101,6 +112,32 @@ export function SelectedPanel({
               {formatILS(a)}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* payment method */}
+      <div className="mt-4">
+        <label className="mb-1 block text-sm font-medium text-white/70">אמצעי תשלום</label>
+        <div className="grid grid-cols-3 gap-2">
+          {PAYMENT_METHODS.map((m) => {
+            const active = method === m.value;
+            return (
+              <button
+                key={m.value}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setMethod(m.value)}
+                className={
+                  active
+                    ? "flex items-center justify-center gap-1.5 rounded-xl border border-gold-500/70 bg-gold-500/20 px-3 py-2.5 text-base font-bold text-white shadow-glow-sm transition active:scale-[0.97]"
+                    : "flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2.5 text-base font-medium text-white/80 transition hover:bg-white/10 active:scale-[0.97]"
+                }
+              >
+                <span aria-hidden>{m.emoji}</span>
+                {m.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -151,10 +188,12 @@ function StatusLine({
   status,
   opened,
   amount,
+  method,
 }: {
   status: ScreenStatus;
   opened: boolean;
   amount: number | null;
+  method: PaymentMethod | null;
 }) {
   const labels: Record<ScreenStatus, string> = {
     idle: "מסך הבית",
@@ -167,6 +206,9 @@ function StatusLine({
       {labels[status]}
       {opened && typeof amount === "number" && (
         <span className="num text-gold-gradient ms-2 font-semibold">{formatILS(amount)}</span>
+      )}
+      {opened && method && (
+        <span className="ms-2 text-white/45">· {paymentMethodLabel(method)}</span>
       )}
     </div>
   );

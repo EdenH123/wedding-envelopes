@@ -1,7 +1,7 @@
 "use client";
 
 import type { Guest } from "@/lib/types";
-import { cn, formatILS } from "@/lib/utils";
+import { cn, formatILS, paymentMethodEmoji, paymentMethodLabel } from "@/lib/utils";
 import { Name } from "@/components/Name";
 
 export function GuestCard({
@@ -28,11 +28,16 @@ export function GuestCard({
         <div className="truncate text-base font-semibold text-white">
           <Name>{guest.name}</Name>
         </div>
-        <div className="mt-0.5 text-xs">
+        <div className="mt-0.5 flex items-center gap-2 text-xs">
           {guest.opened ? (
             <span className="text-emerald-300">נפתח ✅</span>
           ) : (
             <span className="text-white/40">טרם נפתח</span>
+          )}
+          {guest.opened && guest.payment_method && (
+            <span className="text-white/45">
+              {paymentMethodEmoji(guest.payment_method)} {paymentMethodLabel(guest.payment_method)}
+            </span>
           )}
         </div>
       </div>

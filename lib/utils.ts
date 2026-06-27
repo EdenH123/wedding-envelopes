@@ -1,4 +1,21 @@
-import type { EventStats, Guest } from "./types";
+import type { EventStats, Guest, PaymentMethod } from "./types";
+
+/** The three payment methods, with Hebrew labels and an icon for the UI. */
+export const PAYMENT_METHODS: { value: PaymentMethod; label: string; emoji: string }[] = [
+  { value: "bit", label: "ביט", emoji: "📱" },
+  { value: "cash", label: "מזומן", emoji: "💵" },
+  { value: "check", label: "צ׳ק", emoji: "🧾" },
+];
+
+/** Hebrew label for a payment method (empty string if none). */
+export function paymentMethodLabel(method: PaymentMethod | null | undefined): string {
+  return PAYMENT_METHODS.find((m) => m.value === method)?.label ?? "";
+}
+
+/** Emoji for a payment method (empty string if none). */
+export function paymentMethodEmoji(method: PaymentMethod | null | undefined): string {
+  return PAYMENT_METHODS.find((m) => m.value === method)?.emoji ?? "";
+}
 
 /** Tiny classnames helper (no dependency needed). */
 export function cn(...parts: Array<string | false | null | undefined>): string {

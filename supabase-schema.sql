@@ -12,13 +12,28 @@ create extension if not exists pgcrypto;
 -- ──────────────────────────────────────────────────────────────────────────
 
 create table if not exists public.guests (
-  id          uuid primary key default gen_random_uuid(),
-  name        text not null,
-  amount      numeric,
-  opened      boolean not null default false,
-  created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
+  id              uuid primary key default gen_random_uuid(),
+  name            text not null,
+  amount          numeric,
+  payment_method  text check (payment_method in ('bit', 'cash', 'check')),
+  opened          boolean not null default false,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
 );
+
+-- If the table already existed (from an earlier version), add the column/constraint.
+alter table public.guests add column if not exists payment_method text;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'guests_payment_method_check'
+  ) then
+    alter table public.guests
+      add constraint guests_payment_method_check
+      check (payment_method in ('bit', 'cash', 'check'));
+  end if;
+end
+$$;
 
 create table if not exists public.event_state (
   id                 text primary key,

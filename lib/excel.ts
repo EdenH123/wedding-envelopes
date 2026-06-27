@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import type { Guest } from "./types";
-import { normalizeName } from "./utils";
+import { normalizeName, paymentMethodLabel } from "./utils";
 
 /**
  * Parse an uploaded spreadsheet and return guest names from the FIRST column.
@@ -67,19 +67,21 @@ export function exportGuestsToExcel(guests: Guest[], fileName = "envelope-show-r
   const rows = guests.map((g) => ({
     name: g.name,
     amount: g.amount ?? "",
+    payment_method: paymentMethodLabel(g.payment_method),
     opened: g.opened ? "yes" : "no",
     created_at: g.created_at,
     updated_at: g.updated_at,
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(rows, {
-    header: ["name", "amount", "opened", "created_at", "updated_at"],
+    header: ["name", "amount", "payment_method", "opened", "created_at", "updated_at"],
   });
 
   // Reasonable column widths.
   worksheet["!cols"] = [
     { wch: 28 },
     { wch: 12 },
+    { wch: 14 },
     { wch: 8 },
     { wch: 24 },
     { wch: 24 },

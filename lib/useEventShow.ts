@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { EVENT_STATE_ID, isSupabaseConfigured, supabase } from "./supabase";
 import { computeStats, nameKey, normalizeName } from "./utils";
-import type { EventState, EventStats, Guest, ScreenStatus } from "./types";
+import type { EventState, EventStats, Guest, PaymentMethod, ScreenStatus } from "./types";
 
 export interface ActionResult {
   ok: boolean;
@@ -34,11 +34,19 @@ export interface UseEventShow {
   clearSelection: () => Promise<ActionResult>;
 
   // ── Reveal ───────────────────────────────────────────────────
-  revealAmount: (guestId: string, amount: number) => Promise<ActionResult>;
+  revealAmount: (
+    guestId: string,
+    amount: number,
+    paymentMethod: PaymentMethod
+  ) => Promise<ActionResult>;
   undoLastReveal: () => Promise<ActionResult>;
 
   // ── Guest CRUD ───────────────────────────────────────────────
-  addAndReveal: (name: string, amount: number) => Promise<ActionResult>;
+  addAndReveal: (
+    name: string,
+    amount: number,
+    paymentMethod: PaymentMethod
+  ) => Promise<ActionResult>;
   importGuests: (names: string[]) => Promise<ImportResult>;
   deleteGuest: (guestId: string) => Promise<ActionResult>;
 }
@@ -201,11 +209,15 @@ export function useEventShow(): UseEventShow {
   );
 
   const revealAmount = useCallback(
-    async (guestId: string, amount: number): Promise<ActionResult> => {
+    async (
+      guestId: string,
+      amount: number,
+      paymentMethod: PaymentMethod
+    ): Promise<ActionResult> => {
       try {
         const { error: gErr } = await supabase
           .from("guests")
-          .update({ amount, opened: true, updated_at: nowISO() })
+          .update({ amount, payment_method: paymentMethod, opened: true, updated_at: nowISO() })
           .eq("id", guestId);
         if (gErr) throw gErr;
 
@@ -239,7 +251,7 @@ export function useEventShow(): UseEventShow {
     try {
       const { error: gErr } = await supabase
         .from("guests")
-        .update({ amount: null, opened: false, updated_at: nowISO() })
+        .update({ amount: null, payment_method: null, opened: false, updated_at: nowISO() })
         .eq("id", target.id);
       if (gErr) throw gErr;
 
@@ -256,13 +268,17 @@ export function useEventShow(): UseEventShow {
   }, [guests, selectedGuest, updateState]);
 
   const addAndReveal = useCallback(
-    async (rawName: string, amount: number): Promise<ActionResult> => {
+    async (
+      rawName: string,
+      amount: number,
+      paymentMethod: PaymentMethod
+    ): Promise<ActionResult> => {
       const name = normalizeName(rawName);
       if (!name) return { ok: false, error: "נדרש שם." };
       try {
         const { data, error: iErr } = await supabase
           .from("guests")
-          .insert({ name, amount, opened: true })
+          .insert({ name, amount, payment_method: paymentMethod, opened: true })
           .select()
           .single();
         if (iErr) throw iErr;

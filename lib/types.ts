@@ -5,6 +5,9 @@
 
 export type ScreenStatus = "idle" | "selected" | "ready" | "revealed";
 
+/** How the gift was given. Stored as a stable key; rendered in Hebrew in the UI. */
+export type PaymentMethod = "bit" | "cash" | "check";
+
 // NOTE: These are `type` aliases (not `interface`s) on purpose. The Supabase
 // typed client requires each table's Row/Insert/Update to satisfy
 // `Record<string, unknown>`, and TS interfaces don't satisfy that index
@@ -13,6 +16,7 @@ export type Guest = {
   id: string;
   name: string;
   amount: number | null;
+  payment_method: PaymentMethod | null;
   opened: boolean;
   created_at: string;
   updated_at: string;
@@ -45,6 +49,7 @@ export interface Database {
           id?: string;
           name: string;
           amount?: number | null;
+          payment_method?: PaymentMethod | null;
           opened?: boolean;
           created_at?: string;
           updated_at?: string;
