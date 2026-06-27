@@ -1,0 +1,150 @@
+@import url("https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800;900&family=Frank+Ruhl+Libre:wght@500;700;900&family=Rubik:wght@400;500;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-heebo: "Heebo", "Rubik", system-ui, -apple-system, sans-serif;
+  /* Frank Ruhl Libre is an elegant Hebrew serif (with Latin support) — perfect
+     for the wedding display headings. Heebo is the sans fallback. */
+  --font-display: "Frank Ruhl Libre", "Heebo", Georgia, serif;
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ink-900 text-white antialiased;
+    font-family: var(--font-heebo);
+    line-height: 1.6;
+  }
+
+  /* Larger, well-spaced type is easier to read for mixed Hebrew/Latin content. */
+  ::selection {
+    background: rgba(212, 175, 55, 0.35);
+  }
+}
+
+@layer components {
+  /* Deep, animated stage background used across the app. */
+  .bg-stage {
+    background-color: #0a0612;
+    background-image:
+      radial-gradient(60rem 60rem at 15% 10%, rgba(124, 58, 237, 0.18), transparent 60%),
+      radial-gradient(50rem 50rem at 85% 20%, rgba(212, 175, 55, 0.16), transparent 60%),
+      radial-gradient(55rem 55rem at 50% 100%, rgba(236, 72, 153, 0.14), transparent 60%),
+      linear-gradient(160deg, #0a0612 0%, #160c2c 45%, #0a0612 100%);
+    background-size: 200% 200%;
+    background-attachment: fixed;
+  }
+
+  .bg-stage-animated {
+    @apply bg-stage animate-gradient-pan;
+  }
+
+  /* Gold gradient text. */
+  .text-gold-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(100deg, #f6e9c4 0%, #e7bd57 35%, #d4af37 55%, #fff3c4 75%, #d4af37 100%);
+  }
+
+  /* Animated shimmering gold text (for big hero titles). */
+  .text-gold-shimmer {
+    @apply bg-clip-text text-transparent animate-shimmer;
+    background-image: linear-gradient(
+      100deg,
+      #b8902b 0%,
+      #f6e9c4 20%,
+      #fff3c4 35%,
+      #e7bd57 50%,
+      #f6e9c4 65%,
+      #b8902b 100%
+    );
+    background-size: 200% auto;
+  }
+
+  /* Glassy card. */
+  .card-glass {
+    @apply rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-md shadow-card;
+  }
+
+  .card-gold {
+    @apply rounded-2xl border border-gold-500/40 bg-gold-500/[0.07] backdrop-blur-md;
+  }
+
+  /* Primary gold button. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-base font-semibold
+      transition-all duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-gold {
+    @apply btn text-ink-900 shadow-glow-sm;
+    background-image: linear-gradient(120deg, #f6e9c4, #e7bd57 40%, #d4af37 70%, #e0a92f);
+  }
+
+  .btn-gold:hover:not(:disabled) {
+    @apply brightness-110;
+  }
+
+  .btn-outline {
+    @apply btn border border-white/15 bg-white/[0.04] text-white hover:bg-white/10;
+  }
+
+  .btn-ghost {
+    @apply btn text-white/80 hover:bg-white/10;
+  }
+
+  .btn-danger {
+    @apply btn border border-red-400/30 bg-red-500/10 text-red-200 hover:bg-red-500/20;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-base text-white
+      placeholder:text-white/35 outline-none transition focus:border-gold-500/60 focus:ring-2 focus:ring-gold-500/30;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium;
+  }
+
+  /* Force numbers / currency to render left-to-right and stay isolated from the
+     surrounding RTL Hebrew text (prevents "₪1,500" or "42 / 180" from flipping). */
+  .num {
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+}
+
+/* The closed-envelope flap glow used on the "selected" screen. */
+.envelope-shadow {
+  filter: drop-shadow(0 24px 50px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 40px rgba(212, 175, 55, 0.25));
+}
+
+/* Soft vignette overlay to keep edges cinematic on a TV. */
+.vignette::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 120% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* Respect users who prefer reduced motion: keep content readable, calm the loops. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-gradient-pan,
+  .animate-float,
+  .animate-float-slow,
+  .animate-pulse-glow,
+  .animate-spin-slow,
+  .animate-crown-bounce,
+  .animate-shimmer,
+  .animate-twinkle {
+    animation: none !important;
+  }
+}
