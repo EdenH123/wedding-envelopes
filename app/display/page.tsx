@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useEventShow } from "@/lib/useEventShow";
 import { getAmountTier } from "@/lib/utils";
 import { runCelebration, runFinale } from "@/lib/celebrate";
-import { playForTier, playFinale } from "@/lib/sound";
+import { playForTier, playFinale, playDrumroll } from "@/lib/sound";
 import { SetupNotice } from "@/components/SetupNotice";
 import { StatsBar } from "@/components/display/StatsBar";
 import { IdleScreen } from "@/components/display/IdleScreen";
@@ -48,6 +48,18 @@ export default function DisplayPage() {
     cleanupRef.current();
     cleanupRef.current = runFinale();
     playFinale();
+  }, [status]);
+
+  // Drumroll when the screen enters "ready" (once per entry).
+  const readyFiredRef = useRef(false);
+  useEffect(() => {
+    if (status !== "ready") {
+      readyFiredRef.current = false;
+      return;
+    }
+    if (readyFiredRef.current) return;
+    readyFiredRef.current = true;
+    playDrumroll();
   }, [status]);
 
   // Stop animations on unmount.

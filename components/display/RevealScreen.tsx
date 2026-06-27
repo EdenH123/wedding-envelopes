@@ -2,9 +2,22 @@ import type { Guest } from "@/lib/types";
 import { cn, formatILS, getAmountTier, tierLabel, type AmountTier } from "@/lib/utils";
 import { Name } from "@/components/Name";
 import { RouletteWheel } from "./RouletteWheel";
+import { SlotNumber } from "./SlotNumber";
+import { Shockwave } from "./Shockwave";
+import { CoinBurst } from "./CoinBurst";
+import { EnvelopeOpenFx } from "./EnvelopeOpenFx";
 
 // Ambient twinkle positions (deterministic).
 const TWINKLES = ["6%", "16%", "30%", "44%", "58%", "72%", "84%", "92%"];
+
+const COIN_COUNT: Record<AmountTier, number> = {
+  sparkle: 6,
+  "confetti-small": 9,
+  "confetti-big": 13,
+  fireworks: 17,
+  royal: 24,
+  lucky17: 18,
+};
 
 export function RevealScreen({ guest }: { guest: Guest | null }) {
   const amount = guest?.amount ?? 0;
@@ -12,14 +25,31 @@ export function RevealScreen({ guest }: { guest: Guest | null }) {
   const isKingTier = tier === "royal";
   const isLucky = tier === "lucky17";
 
+  const amountSize = isLucky ? "text-[clamp(3rem,13vh,11rem)]" : "text-[clamp(4rem,22vh,22rem)]";
+  const amountCls = cn(
+    "mt-[1vh] font-display font-black leading-none tracking-tight",
+    amountSize,
+    amountClass(tier)
+  );
+
   return (
     <div
-      // `key` forces the entrance animation to replay on every new reveal.
+      // `key` (set on this element) forces every child — including the effect
+      // components — to remount on each new reveal, replaying their animations.
       key={`${guest?.id}-${guest?.updated_at}`}
       className="relative flex h-full w-full flex-col items-center justify-center px-6 text-center"
     >
       {/* tier-colored aura behind everything */}
       <div className={cn("absolute inset-0 -z-10", auraClass(tier))} />
+
+      {/* shockwave ripple + screen flash */}
+      <Shockwave tier={tier} />
+
+      {/* coins fly into the pot */}
+      <CoinBurst count={COIN_COUNT[tier]} />
+
+      {/* envelope tears open (not for lucky — the roulette wheel is its intro) */}
+      {!isLucky && <EnvelopeOpenFx />}
 
       {/* ambient twinkles */}
       {TWINKLES.map((left, i) => (
@@ -52,17 +82,12 @@ export function RevealScreen({ guest }: { guest: Guest | null }) {
       </h2>
 
       {/* the amount (forced LTR so "₪1,500" never flips in the RTL layout) */}
-      <div className="animate-pop-in [animation-delay:120ms]">
-        <div
-          dir="ltr"
-          className={cn(
-            "mt-[1vh] font-display font-black leading-none tracking-tight",
-            isLucky ? "text-[clamp(3rem,13vh,11rem)]" : "text-[clamp(4rem,22vh,22rem)]",
-            amountClass(tier)
-          )}
-        >
-          {formatILS(amount)}
-        </div>
+      <div dir="ltr" className="animate-pop-in [animation-delay:120ms]">
+        {isLucky ? (
+          <div className={amountCls}>{formatILS(amount)}</div>
+        ) : (
+          <SlotNumber value={amount} className={amountCls} />
+        )}
       </div>
 
       {/* tier caption */}

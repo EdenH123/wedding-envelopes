@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import type { EventStats, Guest } from "@/lib/types";
 import {
   computePaymentBreakdown,
@@ -10,6 +10,7 @@ import {
   topGivers,
   type MethodTotal,
 } from "@/lib/utils";
+import { useCountUp } from "@/lib/useCountUp";
 import { Name } from "@/components/Name";
 
 // Floating ambient decorations (deterministic — no hydration mismatch).
@@ -22,28 +23,8 @@ const FLOATERS = [
   { e: "🎊", left: "11%", top: "46%", d: "1.4s", s: "2.6vh" },
 ];
 
-/** Eased count-up from 0 → target whenever `target` changes. */
-function useCountUp(target: number, duration = 1600): number {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    let raf = 0;
-    let startTs = 0;
-    const tick = (now: number) => {
-      if (!startTs) startTs = now;
-      const t = Math.min(1, (now - startTs) / duration);
-      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
-      setValue(target * eased);
-      if (t < 1) raf = requestAnimationFrame(tick);
-      else setValue(target);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, duration]);
-  return value;
-}
-
 export function SummaryScreen({ guests, stats }: { guests: Guest[]; stats: EventStats }) {
-  const total = useCountUp(stats.totalAmount);
+  const total = useCountUp(stats.totalAmount, { duration: 1800, animateOnMount: true });
   const breakdown = computePaymentBreakdown(guests);
   const leaders = topGivers(guests, 10);
   const podium = leaders.slice(0, 3);
@@ -131,6 +112,7 @@ const PODIUM = [
 
 function PodiumColumn({ guest, rank }: { guest: Guest; rank: number }) {
   const p = PODIUM[rank];
+  const amount = useCountUp(guest.amount ?? 0, { duration: 1400, animateOnMount: true });
   return (
     <div
       className="flex w-[20vw] max-w-[16rem] flex-col items-center animate-rise-in"
@@ -139,9 +121,12 @@ function PodiumColumn({ guest, rank }: { guest: Guest; rank: number }) {
       <div className="mb-[0.5vh] max-w-full truncate text-[2.4vh] font-bold text-white">
         <Name>{guest.name}</Name>
       </div>
-      <div className="num text-gold-gradient text-[2.8vh] font-extrabold">{formatILS(guest.amount)}</div>
+      <div className="num text-gold-gradient text-[2.8vh] font-extrabold">
+        {formatILS(Math.round(amount))}
+      </div>
       <div
-        className={`mt-[0.8vh] flex w-full items-start justify-center rounded-t-2xl border-x border-t bg-gradient-to-b ${p.bar} ${p.h} ${p.ring}`}
+        className={`mt-[0.8vh] flex w-full origin-bottom animate-grow-up items-start justify-center rounded-t-2xl border-x border-t bg-gradient-to-b ${p.bar} ${p.h} ${p.ring}`}
+        style={{ animationDelay: `${300 + rank * 150}ms` } as CSSProperties}
       >
         <span className="mt-[1vh] text-[4.5vh] drop-shadow">{p.medal}</span>
       </div>
@@ -150,13 +135,14 @@ function PodiumColumn({ guest, rank }: { guest: Guest; rank: number }) {
 }
 
 function MethodTile({ emoji, label, total }: { emoji: string; label: string; total: MethodTotal }) {
+  const sum = useCountUp(total.sum, { duration: 1400, animateOnMount: true });
   return (
     <div className="card-glass flex flex-col items-center justify-center p-[1.6vh]">
       <div className="text-[2.2vh] font-semibold text-white/80">
         <span aria-hidden>{emoji}</span> {label}
       </div>
       <div className="num text-gold-gradient text-[3.6vh] font-extrabold leading-tight">
-        {formatILS(total.sum)}
+        {formatILS(Math.round(sum))}
       </div>
       <div className="num text-[1.8vh] text-white/45">
         {total.count} {total.count === 1 ? "מעטפה" : "מעטפות"}

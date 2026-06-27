@@ -120,6 +120,27 @@
   }
 }
 
+/* Coins flying from the reveal into the "pot" (stats bar). Per-coin trajectory
+   comes from CSS custom properties --dx / --dy / --rot set inline. */
+@keyframes coin-fly {
+  0% {
+    transform: translate(0, 0) scale(0.4) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+    transform: translate(calc(var(--dx) * 0.2), -14vh) scale(1.15) rotate(calc(var(--rot) * 0.3));
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.55) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+.animate-coin-fly {
+  animation: coin-fly 1.25s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+}
+
 /* The closed-envelope flap glow used on the "selected" screen. */
 .envelope-shadow {
   filter: drop-shadow(0 24px 50px rgba(0, 0, 0, 0.55))
@@ -146,7 +167,9 @@
   .animate-shimmer,
   .animate-twinkle,
   .animate-roulette-spin,
-  .animate-neon-flicker {
+  .animate-neon-flicker,
+  .animate-shake,
+  .animate-spotlight-pulse {
     animation: none !important;
   }
 }

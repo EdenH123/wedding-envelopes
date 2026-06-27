@@ -96,6 +96,42 @@ const config: Config = {
           "50%": { opacity: "0.55" },
           "55%": { opacity: "1" },
         },
+        "grow-up": {
+          "0%": { transform: "scaleY(0)" },
+          "100%": { transform: "scaleY(1)" },
+        },
+        "drop-in": {
+          "0%": { opacity: "0", transform: "translateY(-40px) scale(0.5) rotate(-15deg)" },
+          "70%": { opacity: "1", transform: "translateY(4px) scale(1.1) rotate(6deg)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1) rotate(0deg)" },
+        },
+        shake: {
+          "0%, 100%": { transform: "translateX(0) rotate(0deg)" },
+          "20%": { transform: "translateX(-6px) rotate(-2deg)" },
+          "40%": { transform: "translateX(6px) rotate(2deg)" },
+          "60%": { transform: "translateX(-4px) rotate(-1.5deg)" },
+          "80%": { transform: "translateX(4px) rotate(1.5deg)" },
+        },
+        "ring-expand": {
+          "0%": { transform: "translate(-50%, -50%) scale(0)", opacity: "0.7" },
+          "100%": { transform: "translate(-50%, -50%) scale(1)", opacity: "0" },
+        },
+        "flash-out": {
+          "0%": { opacity: "0.6" },
+          "100%": { opacity: "0" },
+        },
+        "flap-open": {
+          "0%": { transform: "perspective(600px) rotateX(0deg)" },
+          "100%": { transform: "perspective(600px) rotateX(-175deg)" },
+        },
+        "fade-out-up": {
+          "0%": { opacity: "1", transform: "scale(1)" },
+          "100%": { opacity: "0", transform: "scale(1.3)" },
+        },
+        "spotlight-pulse": {
+          "0%, 100%": { opacity: "0.35", transform: "scale(0.9)" },
+          "50%": { opacity: "0.7", transform: "scale(1.05)" },
+        },
       },
       animation: {
         "gradient-pan": "gradient-pan 18s ease infinite",
@@ -112,6 +148,14 @@ const config: Config = {
         "count-flash": "count-flash 0.5s ease-out",
         "roulette-spin": "roulette-spin 4.5s cubic-bezier(0.16, 0.84, 0.2, 1) forwards",
         "neon-flicker": "neon-flicker 2.2s ease-in-out infinite",
+        "grow-up": "grow-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "drop-in": "drop-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both",
+        shake: "shake 0.4s ease-in-out infinite",
+        "ring-expand": "ring-expand 0.9s ease-out forwards",
+        "flash-out": "flash-out 0.5s ease-out forwards",
+        "flap-open": "flap-open 0.6s ease-in forwards",
+        "fade-out-up": "fade-out-up 0.9s ease-out forwards",
+        "spotlight-pulse": "spotlight-pulse 1.4s ease-in-out infinite",
       },
     },
   },

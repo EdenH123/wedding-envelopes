@@ -266,6 +266,21 @@ export function playFinale(): void {
   coins(t + 0.5, 22, 0.2);
 }
 
+/** An accelerating snare drumroll for the "Ready?" tension build, ending on a hit. */
+export function playDrumroll(durationMs = 1500): void {
+  if (!isReady()) return;
+  const start = nowT() + 0.02;
+  const end = start + durationMs / 1000;
+  let t = start;
+  let gap = 0.09;
+  while (t < end) {
+    noise(t, 0.04, { peak: 0.2, type: "bandpass", freq: 2200, q: 0.8, attack: 0.001 });
+    gap = Math.max(0.028, gap * 0.93); // speed up
+    t += gap;
+  }
+  noise(end, 0.14, { peak: 0.42, type: "bandpass", freq: 1700, q: 0.6 }); // final accent
+}
+
 /** A short confirmation sound when the operator enables audio. */
 export function playTestChime(): void {
   if (!isReady()) return;
