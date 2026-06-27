@@ -342,23 +342,26 @@ function crowdRoar(start: number, duration = 2.8, peak = 0.5): void {
   src.stop(start + duration + 0.1);
 }
 
-/** A soft bell note (sine fundamental + a quiet partial for shimmer). */
+/** A clean bell note: triangle body + pure sine for a crisp, ringing tone. */
 function bell(freq: number, start: number, dur: number, peak: number): void {
-  tone(freq, start, dur, { type: "sine", peak, attack: 0.004 });
-  tone(freq * 2, start, dur * 0.55, { type: "sine", peak: peak * 0.18, attack: 0.004 });
+  tone(freq, start, dur, { type: "triangle", peak: peak * 0.7, attack: 0.002 });
+  tone(freq, start, dur * 1.05, { type: "sine", peak, attack: 0.002 });
 }
 
-/** A pleasant "payment confirmed" chime (Apple-Pay style): two warm ascending
+/** A crisp "payment confirmed" chime (Apple-Pay style): two bright ascending
  *  notes. Used for the two lowest tiers. */
-function paymentDing(start: number, peak = 0.3): void {
-  bell(660, start, 0.45, peak);
-  bell(988, start + 0.12, 0.55, peak); // a fifth up
+function paymentDing(start: number, peak = 0.34): void {
+  bell(880, start, 0.3, peak); // A5
+  bell(1318.5, start + 0.1, 0.42, peak); // E6 — a fifth up, the satisfying "ding"
 }
 
 /** The payment sound: a real sample if provided, else the synth ding. */
-function paymentSound(start: number, gainValue = 1.2): void {
-  if (paymentBuffer) playSample(paymentBuffer, start, gainValue);
-  else paymentDing(start, 0.3);
+function paymentSound(
+  start: number,
+  { fileGain = 1.2, synthPeak = 0.34 }: { fileGain?: number; synthPeak?: number } = {}
+): void {
+  if (paymentBuffer) playSample(paymentBuffer, start, fileGain);
+  else paymentDing(start, synthPeak);
 }
 
 /** A big crowd cheer for the top moments: the real sample if available, else a
@@ -381,10 +384,10 @@ export function playForTier(tier: AmountTier): void {
   switch (tier) {
     case "sparkle":
       // Two lowest tiers: an "Apple Pay" payment chime.
-      paymentSound(t, 1.1);
+      paymentSound(t, { fileGain: 1.1, synthPeak: 0.32 });
       break;
     case "confetti-small":
-      paymentSound(t, 1.25);
+      paymentSound(t, { fileGain: 1.3, synthPeak: 0.4 });
       break;
     case "confetti-big":
       applause(t, 2.3, 42, 0.4);
