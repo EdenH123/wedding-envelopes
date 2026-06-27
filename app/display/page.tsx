@@ -3,15 +3,16 @@
 import { useEffect, useRef } from "react";
 import { useEventShow } from "@/lib/useEventShow";
 import { getAmountTier } from "@/lib/utils";
-import { runCelebration } from "@/lib/celebrate";
+import { runCelebration, runFinale } from "@/lib/celebrate";
 import { SetupNotice } from "@/components/SetupNotice";
 import { StatsBar } from "@/components/display/StatsBar";
 import { IdleScreen } from "@/components/display/IdleScreen";
 import { SelectedScreen } from "@/components/display/SelectedScreen";
 import { RevealScreen } from "@/components/display/RevealScreen";
+import { SummaryScreen } from "@/components/display/SummaryScreen";
 
 export default function DisplayPage() {
-  const { eventState, selectedGuest, stats, loading, error, connected, configured } =
+  const { guests, eventState, selectedGuest, stats, loading, error, connected, configured } =
     useEventShow();
 
   // Fire the right celebration whenever a NEW reveal happens. We key off
@@ -30,12 +31,26 @@ export default function DisplayPage() {
     cleanupRef.current = runCelebration(getAmountTier(selectedGuest.amount));
   }, [eventState?.screen_status, eventState?.last_reveal_at, selectedGuest]);
 
+  // Fire a confetti finale when the summary screen appears (once per entry).
+  const status = eventState?.screen_status ?? "idle";
+  const summaryFiredRef = useRef(false);
+  useEffect(() => {
+    if (status !== "summary") {
+      summaryFiredRef.current = false;
+      return;
+    }
+    if (summaryFiredRef.current) return;
+    summaryFiredRef.current = true;
+    cleanupRef.current();
+    cleanupRef.current = runFinale();
+  }, [status]);
+
   // Stop animations on unmount.
   useEffect(() => () => cleanupRef.current(), []);
 
   if (!configured) return <SetupNotice />;
 
-  const status = eventState?.screen_status ?? "idle";
+  const isSummary = status === "summary";
 
   return (
     <main className="bg-stage-animated vignette relative h-screen w-screen overflow-hidden">
@@ -55,9 +70,11 @@ export default function DisplayPage() {
         </div>
       )}
 
-      {/* main stage */}
-      <div className="absolute inset-0 z-10 pb-[16vh]">
-        {status === "revealed" ? (
+      {/* main stage (full height for the summary; otherwise leave room for stats) */}
+      <div className={`absolute inset-0 z-10 ${isSummary ? "" : "pb-[16vh]"}`}>
+        {isSummary ? (
+          <SummaryScreen guests={guests} stats={stats} />
+        ) : status === "revealed" ? (
           <RevealScreen guest={selectedGuest} />
         ) : status === "selected" || status === "ready" ? (
           <SelectedScreen guest={selectedGuest} status={status} />
@@ -66,8 +83,8 @@ export default function DisplayPage() {
         )}
       </div>
 
-      {/* persistent live stats */}
-      <StatsBar stats={stats} />
+      {/* persistent live stats (hidden during the summary finale) */}
+      {!isSummary && <StatsBar stats={stats} />}
     </main>
   );
 }

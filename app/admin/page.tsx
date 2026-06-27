@@ -77,13 +77,37 @@ export default function AdminPage() {
             <ExcelUpload onImport={show.importGuests} />
 
             {/* End-of-event summary */}
-            <button
-              type="button"
-              onClick={() => setSummaryOpen(true)}
-              className="btn-gold w-full py-4 text-lg"
-            >
-              📊 סיכום האירוע
-            </button>
+            {(() => {
+              const onTv = show.eventState?.screen_status === "summary";
+              return (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSummaryOpen(true)}
+                    className="btn-outline py-4"
+                  >
+                    📊 סיכום (תצוגה מקדימה)
+                  </button>
+                  {onTv ? (
+                    <button
+                      type="button"
+                      onClick={show.clearSelection}
+                      className="btn-outline border-emerald-400/40 bg-emerald-500/10 py-4 text-emerald-200"
+                    >
+                      🏠 חזרה למסך הבית
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={show.showSummary}
+                      className="btn-gold py-4"
+                    >
+                      📺 הצג סיכום על המסך
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

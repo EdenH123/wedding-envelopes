@@ -200,6 +200,7 @@ function StatusLine({
     selected: "נבחר — ממתין",
     ready: "מוכן 🥁",
     revealed: "נחשף 🎉",
+    summary: "סיכום על המסך",
   };
   return (
     <div className="mt-1 text-sm text-white/55">

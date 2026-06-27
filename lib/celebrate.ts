@@ -151,6 +151,50 @@ function lucky17(durationMs: number): () => void {
   return () => window.clearInterval(interval);
 }
 
+/**
+ * A sustained celebratory shower for the event summary "finale" screen — gold +
+ * festive confetti drifting from both top corners. Returns a cleanup function.
+ */
+export function runFinale(durationMs = 9000): () => void {
+  if (typeof window === "undefined") return noop;
+
+  const animationEnd = nowPlus(durationMs);
+  const colors = [...GOLD, ...FESTIVE];
+
+  // Two grand opening bursts.
+  confetti({ particleCount: 180, spread: 120, startVelocity: 55, origin: { y: 0.55 }, colors });
+  window.setTimeout(
+    () => confetti({ particleCount: 140, spread: 140, startVelocity: 45, origin: { y: 0.5 }, colors }),
+    500
+  );
+
+  const interval = window.setInterval(() => {
+    const timeLeft = animationEnd - performance.now();
+    if (timeLeft <= 0) {
+      window.clearInterval(interval);
+      return;
+    }
+    confetti({
+      particleCount: 5,
+      angle: 60,
+      spread: 70,
+      startVelocity: 45,
+      origin: { x: 0, y: 0 },
+      colors,
+    });
+    confetti({
+      particleCount: 5,
+      angle: 120,
+      spread: 70,
+      startVelocity: 45,
+      origin: { x: 1, y: 0 },
+      colors,
+    });
+  }, 250);
+
+  return () => window.clearInterval(interval);
+}
+
 function rand(min: number, max: number): number {
   return Math.random() * (max - min) + min;
 }

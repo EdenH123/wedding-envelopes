@@ -32,6 +32,7 @@ export interface UseEventShow {
   selectGuest: (guestId: string) => Promise<ActionResult>;
   setReady: () => Promise<ActionResult>;
   clearSelection: () => Promise<ActionResult>;
+  showSummary: () => Promise<ActionResult>;
 
   // ── Reveal ───────────────────────────────────────────────────
   revealAmount: (
@@ -208,6 +209,11 @@ export function useEventShow(): UseEventShow {
     [setScreen]
   );
 
+  const showSummary = useCallback(
+    () => setScreen("summary", { selected_guest_id: null }),
+    [setScreen]
+  );
+
   const revealAmount = useCallback(
     async (
       guestId: string,
@@ -376,6 +382,7 @@ export function useEventShow(): UseEventShow {
     selectGuest,
     setReady,
     clearSelection,
+    showSummary,
     revealAmount,
     undoLastReveal,
     addAndReveal,

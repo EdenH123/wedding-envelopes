@@ -3,7 +3,7 @@
  * These mirror the Supabase tables defined in supabase-schema.sql.
  */
 
-export type ScreenStatus = "idle" | "selected" | "ready" | "revealed";
+export type ScreenStatus = "idle" | "selected" | "ready" | "revealed" | "summary";
 
 /** How the gift was given. Stored as a stable key; rendered in Hebrew in the UI. */
 export type PaymentMethod = "bit" | "cash" | "check";

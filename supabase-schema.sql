@@ -39,10 +39,20 @@ create table if not exists public.event_state (
   id                 text primary key,
   selected_guest_id  uuid references public.guests(id) on delete set null,
   screen_status      text not null default 'idle'
-                       check (screen_status in ('idle', 'selected', 'ready', 'revealed')),
+                       check (screen_status in ('idle', 'selected', 'ready', 'revealed', 'summary')),
   last_reveal_at     timestamptz,
   updated_at         timestamptz not null default now()
 );
+
+-- If the table already existed, widen the screen_status check to include 'summary'.
+do $$
+begin
+  alter table public.event_state drop constraint if exists event_state_screen_status_check;
+  alter table public.event_state
+    add constraint event_state_screen_status_check
+    check (screen_status in ('idle', 'selected', 'ready', 'revealed', 'summary'));
+end
+$$;
 
 -- Helpful index for name search / sorting.
 create index if not exists guests_name_idx on public.guests (name);
