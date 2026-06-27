@@ -20,34 +20,48 @@ let muted = false;
 
 const BASE_VOLUME = 0.85;
 
-// Optional real crowd-cheer sample for the biggest moments. Drop a file at
-// public/sounds/crowd-cheer.mp3 and it'll be used automatically; otherwise a
-// synthesized crowd roar is the fallback.
+// Optional real audio samples. Drop files in public/sounds/ and they're used
+// automatically; otherwise synthesized fallbacks play.
+//   crowd-cheer.mp3 → biggest reveals + finale
+//   payment.mp3     → the two lowest tiers (an "Apple Pay" style chime)
 let cheerBuffer: AudioBuffer | null = null;
-let cheerTried = false;
+let paymentBuffer: AudioBuffer | null = null;
+let samplesTried = false;
+
 const CHEER_CANDIDATES = [
   "/sounds/crowd-cheer.mp3",
   "/sounds/crowd-cheer.ogg",
   "/sounds/crowd-cheer.wav",
   "/sounds/cheer.mp3",
 ];
+const PAYMENT_CANDIDATES = [
+  "/sounds/payment.mp3",
+  "/sounds/payment.ogg",
+  "/sounds/payment.wav",
+  "/sounds/apple-pay.mp3",
+];
 
-async function loadCheer(): Promise<void> {
-  if (cheerTried) return;
-  cheerTried = true;
-  const c = ensure();
-  if (!c) return;
-  for (const url of CHEER_CANDIDATES) {
+async function loadOne(candidates: string[], c: AudioContext): Promise<AudioBuffer | null> {
+  for (const url of candidates) {
     try {
       const res = await fetch(url);
       if (!res.ok) continue;
       const arr = await res.arrayBuffer();
-      cheerBuffer = await c.decodeAudioData(arr);
-      return;
+      return await c.decodeAudioData(arr);
     } catch {
       /* try next / fall back to synth */
     }
   }
+  return null;
+}
+
+async function loadSamples(): Promise<void> {
+  if (samplesTried) return;
+  samplesTried = true;
+  const c = ensure();
+  if (!c) return;
+  cheerBuffer = await loadOne(CHEER_CANDIDATES, c);
+  paymentBuffer = await loadOne(PAYMENT_CANDIDATES, c);
 }
 
 function makeReverbIR(seconds: number, decay: number): AudioBuffer {
@@ -113,8 +127,8 @@ export async function unlockAudio(): Promise<void> {
       /* ignore */
     }
   }
-  // Best-effort preload of the crowd-cheer sample (no-op if no file present).
-  void loadCheer();
+  // Best-effort preload of the optional audio samples (no-op if no files).
+  void loadSamples();
 }
 
 export function isReady(): boolean {
@@ -328,6 +342,25 @@ function crowdRoar(start: number, duration = 2.8, peak = 0.5): void {
   src.stop(start + duration + 0.1);
 }
 
+/** A soft bell note (sine fundamental + a quiet partial for shimmer). */
+function bell(freq: number, start: number, dur: number, peak: number): void {
+  tone(freq, start, dur, { type: "sine", peak, attack: 0.004 });
+  tone(freq * 2, start, dur * 0.55, { type: "sine", peak: peak * 0.18, attack: 0.004 });
+}
+
+/** A pleasant "payment confirmed" chime (Apple-Pay style): two warm ascending
+ *  notes. Used for the two lowest tiers. */
+function paymentDing(start: number, peak = 0.3): void {
+  bell(660, start, 0.45, peak);
+  bell(988, start + 0.12, 0.55, peak); // a fifth up
+}
+
+/** The payment sound: a real sample if provided, else the synth ding. */
+function paymentSound(start: number, gainValue = 1.2): void {
+  if (paymentBuffer) playSample(paymentBuffer, start, gainValue);
+  else paymentDing(start, 0.3);
+}
+
 /** A big crowd cheer for the top moments: the real sample if available, else a
  *  synthesized roar — both layered with applause. */
 function bigCheer(start: number): void {
@@ -347,10 +380,11 @@ export function playForTier(tier: AmountTier): void {
   const t = nowT() + 0.02;
   switch (tier) {
     case "sparkle":
-      applause(t, 1.2, 20, 0.3);
+      // Two lowest tiers: an "Apple Pay" payment chime.
+      paymentSound(t, 1.1);
       break;
     case "confetti-small":
-      applause(t, 1.7, 28, 0.34);
+      paymentSound(t, 1.25);
       break;
     case "confetti-big":
       applause(t, 2.3, 42, 0.4);

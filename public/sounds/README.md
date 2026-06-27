@@ -25,3 +25,14 @@ app falls back to a synthesized crowd roar — so this is optional.
 
 That's it — no code changes needed. Redeploy (or restart `npm run dev`), open
 `/display`, tap **🔊 הפעלת סאונד**, and the next big reveal will roar.
+
+## Payment chime (optional)
+
+The two lowest tiers (< ₪500 and ₪500–999) play a soft "payment confirmed"
+chime. A pleasant synth version plays by default. To use a real clip instead
+(e.g. an Apple-Pay-style sound you have the rights to), add a file here named:
+
+- `payment.mp3` (or `.ogg` / `.wav`), or `apple-pay.mp3`
+
+Keep it short (~1 second).
+
